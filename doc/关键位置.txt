@@ -1,0 +1,15 @@
+/os5/development/prototype/source/genode-master/qt4目录
+1.字体文件：/contrib/qt-everywhere-opensource-src-4.7.4/lib/fonts/OS5.ttf
+2.字体资源文件：/src/lib/dejavusans
+3.原型系统启动：/run/verify.run
+4.OS5启动提示：/src/app/tipsak
+5.任务栏，应用程序启动器：/src/app/qt_launchpad
+6.低密级应用：/src/app/lowlevel
+7.中密级应用：/src/app/midlevel
+8.高密级应用：/src/app/highlevel
+9.低密级服务进程：/src/app/lowlevel_process
+10.中密级服务进程：/src/app/midlevel_process
+11.高密级服务进程：/src/app/highlevel_process
+12.审计日志：/home/nfs-lele/src/test/log
+13.系统基本服务接口测试程序：/src/app/funtest
+14.中密级服务进程消息显示的辅助程序：/src/app/server_bak

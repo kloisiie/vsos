@@ -1,0 +1,39 @@
+#
+# Build
+#
+
+build { core init cap drivers/timer }
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+install_config {
+<config>
+	<parent-provides>
+		<service name="CAP"/>
+		<service name="LOG"/>
+		<service name="RM"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="channel_cap_client">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+	<start name="channel_cap_server">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+</config>}
+
+#
+# Boot image
+#
+
+build_boot_image { core init channel_cap_client channel_cap_server timer }
+
+append qemu_args " -nographic "
+
+run_genode_until forever

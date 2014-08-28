@@ -1,0 +1,37 @@
+/*
+ * \brief  Client-side interface of the SAKserver service
+ * \author Wang Shuo
+ * \date   2012-09-12
+ */
+
+/*
+ * Copyright (C) 2008-2013 NFS, ISCAS
+ *
+ * This file is part of the Genode OS framework, which is distributed
+ * under the terms of the GNU General Public License version 2.
+ */
+
+#ifndef _INCLUDE__CONTROL_SESSION_H__CLIENT_H_
+#define _INCLUDE__CONTROL_SESSION_H__CLIENT_H_
+
+#include <control_session/control_session.h>
+#include <base/rpc_client.h>
+#include <base/printf.h>
+
+namespace CONTROL {
+
+	struct Session_client : Genode::Rpc_client<Session>
+	{
+		Session_client(Genode::Capability<Session> cap)
+		: Genode::Rpc_client<Session>(cap) { }
+
+		void start()
+		{
+			PDBG("Start test.");
+			call<Rpc_start>();
+		}
+
+	};
+}
+
+#endif /* _INCLUDE__SAKSERVER_SESSION_H__CLIENT_H_ */

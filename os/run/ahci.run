@@ -1,0 +1,177 @@
+if {![have_spec x86_32]} {
+	puts "\nThe AHCI driver supports the x86_32 architecture only\n"
+	exit 0
+}
+
+#
+# Build
+#
+set build_components {
+	core init drivers/timer drivers/pci drivers/ahci test/block
+}
+
+lappend_if [have_spec acpi] build_components drivers/acpi
+lappend_if [have_spec pci]  build_components drivers/pci/device_pd
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+set config {
+<config verbose="yes">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL" />
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>}
+
+append_if [have_spec acpi] config {
+	<start name="acpi">
+		<resource name="RAM" quantum="4M"/>
+		<binary name="acpi_drv"/>
+		<provides>
+			<service name="PCI"/>
+			<service name="IRQ" />
+		</provides>
+		<route>
+			<service name="PCI"> <any-child /> </service>
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start>}
+
+append_if [expr ![have_spec acpi]] config {
+	<start name="pci_drv">
+		<resource name="RAM" quantum="2M"/>
+		<provides><service name="PCI"/></provides>
+	</start>}
+
+append config {
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+		<route>
+			<service name="IRQ"><child name="acpi" /></service>
+			<any-service> <parent /> <any-child /></any-service>
+		</route>
+	</start>
+	<start name="ahci">
+		<binary name="ahci_drv" />
+		<resource name="RAM" quantum="10M" />
+		<provides><service name="Block" /></provides>
+		<route>}
+
+append_if [have_spec acpi] config {
+			<service name="IRQ"><child name="acpi" /></service>}
+
+append config {
+			<any-service> <parent /> <any-child /></any-service>
+		</route>
+	</start>
+	<start name="test-block">
+		<resource name="RAM" quantum="2M" />
+		<route>
+			
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start>
+	<start name="test-block-1">
+		<resource name="RAM" quantum="2M" />
+		<route>
+                       
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start>
+</config>}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+set boot_modules {
+	core init timer pci_drv ahci_drv test-block test-block-1 acpi_drv
+}
+
+if {[have_spec nova]} {
+	append boot_modules {pci_device_pd}
+}
+
+build_boot_image $boot_modules
+
+#
+# Qemu
+#
+
+set disk_image "bin/block.img"
+
+append qemu_args " -m 64 -nographic "
+append qemu_args " -drive id=disk,file=$disk_image,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 -boot d"
+
+if { [file exists $disk_image] == 0 } then {
+	# create random block device file
+	puts "creating disk image \"$disk_image\""
+	catch {
+		exec dd if=/dev/urandom of=$disk_image bs=512 count=20480
+	}
+}
+
+#
+# Test
+#
+run_genode_until forever
+#run_genode_until "child exited with exit value 0.*\n" 10
+
+# pay only attention to the output of test-block
+#grep_output {^\[init -> test-block.*Comparing}
+
+compare_output_to {
+	[init -> test-block] Comparing block 0000000000: success
+	[init -> test-block] Comparing block 0000000640: success
+	[init -> test-block] Comparing block 0000001280: success
+	[init -> test-block] Comparing block 0000001920: success
+	[init -> test-block] Comparing block 0000002560: success
+	[init -> test-block] Comparing block 0000003200: success
+	[init -> test-block] Comparing block 0000003840: success
+	[init -> test-block] Comparing block 0000004480: success
+	[init -> test-block] Comparing block 0000005120: success
+	[init -> test-block] Comparing block 0000005760: success
+	[init -> test-block] Comparing block 0000006400: success
+	[init -> test-block] Comparing block 0000007040: success
+	[init -> test-block] Comparing block 0000007680: success
+	[init -> test-block] Comparing block 0000008320: success
+	[init -> test-block] Comparing block 0000008960: success
+	[init -> test-block] Comparing block 0000009600: success
+	[init -> test-block] Comparing block 0000010240: success
+	[init -> test-block] Comparing block 0000010880: success
+	[init -> test-block] Comparing block 0000011520: success
+	[init -> test-block] Comparing block 0000012160: success
+	[init -> test-block] Comparing block 0000012800: success
+	[init -> test-block] Comparing block 0000013440: success
+	[init -> test-block] Comparing block 0000014080: success
+	[init -> test-block] Comparing block 0000014720: success
+	[init -> test-block] Comparing block 0000015360: success
+	[init -> test-block] Comparing block 0000016000: success
+	[init -> test-block] Comparing block 0000016640: success
+	[init -> test-block] Comparing block 0000017280: success
+	[init -> test-block] Comparing block 0000017920: success
+	[init -> test-block] Comparing block 0000018560: success
+	[init -> test-block] Comparing block 0000019200: success
+	[init -> test-block] Comparing block 0000019840: success
+}
+

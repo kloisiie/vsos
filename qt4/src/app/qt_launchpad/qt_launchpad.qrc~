@@ -1,0 +1,24 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource>
+<file>appicons/midlevel_app.png</file>
+<file>appicons/midlevel_app_m.png</file>
+<file>appicons/midlevel_process.png</file>
+<file>appicons/midlevel_process_m.png</file>
+<file>appicons/lowlevel_app.png</file>
+<file>appicons/lowlevel_app_m.png</file>
+<file>appicons/lowlevel_process.png</file>
+<file>appicons/lowlevel_process_m.png</file>
+<file>appicons/highlevel_app.png</file>
+<file>appicons/highlevel_app_m.png</file>
+<file>appicons/highlevel_process.png</file>
+<file>appicons/highlevel_process_m.png</file>
+<file>appicons/log.png</file>
+<file>appicons/log_m.png</file>
+<file>appicons/funtest.png</file>
+<file>appicons/funtest_m.png</file>
+<file>appicons/l4linux.png</file>
+<file>appicons/monitortest.png</file>
+<file>appicons/monitortest_m.png</file>
+</qresource>
+</RCC>

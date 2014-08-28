@@ -1,0 +1,37 @@
+#
+# Build
+#
+
+build { core init monitor drivers/timer }
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+install_config {
+<config>
+	<parent-provides>
+		<service name="CAP"/>
+		<service name="LOG"/>
+		<service name="RM"/>
+                <service name="Monitor"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="monitor_client">
+		<resource name="RAM" quantum="4M"/>
+	</start>
+</config>}
+
+#
+# Boot image
+#
+
+build_boot_image { core init monitor_client timer }
+
+append qemu_args " -nographic "
+
+run_genode_until forever

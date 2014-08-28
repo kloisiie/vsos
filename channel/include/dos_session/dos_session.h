@@ -1,0 +1,25 @@
+#ifndef _INCLUDE__DOS_SESSION__DOS_SESSION_H_
+#define _INCLUDE__DOS_SESSION__DOS_SESSION_H_
+
+#include <session/session.h>
+#include <base/rpc.h>
+
+namespace Dos {
+
+	struct Session : Genode::Session
+	{
+		static const char *service_name() { return "Dos"; }
+		virtual int subr(int a, int b) = 0;
+		virtual int addi(int a, int b) = 0;
+
+		/*******************
+		 ** RPC interface **
+		 *******************/
+
+		GENODE_RPC(Rpc_subr, int, subr, int, int);
+		GENODE_RPC(Rpc_addi, int, addi, int, int);
+		GENODE_RPC_INTERFACE(Rpc_subr, Rpc_addi);
+	};
+}
+
+#endif 

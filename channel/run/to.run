@@ -1,0 +1,117 @@
+if {[have_spec linux]} {
+        puts "\nLinux not supported because of missing UART driver\n"
+        exit 0
+}
+
+set build_components {
+	core init drivers/timer drivers/uart
+	noux/minimal lib/libc_noux
+	server/ram_fs tocttou/files tocttou/attacker tocttou/target
+}
+
+build $build_components
+
+# create tar archive
+exec tar cfv bin/mkfiles.tar      -h -C bin mkfiles 
+exec tar cfv bin/target.tar	 -h -C bin target 
+exec tar cfv bin/attacker.tar       -h -C bin attacker 
+
+create_boot_directory
+
+append config {
+	<config verbose="yes">
+		<parent-provides>
+			<service name="ROM"/>
+			<service name="LOG"/>
+			<service name="CAP"/>
+			<service name="RAM"/>
+			<service name="RM"/>
+			<service name="CPU"/>
+			<service name="PD"/>
+			<service name="IRQ"/>
+			<service name="IO_PORT"/>
+			<service name="IO_MEM"/>
+			<service name="SIGNAL"/>
+		</parent-provides>
+		<default-route>
+			<any-service> <any-child/> <parent/> </any-service>
+		</default-route>
+		<start name="timer">
+			<resource name="RAM" quantum="1M"/>
+			<provides><service name="Timer"/></provides>
+		</start>
+		<start name="uart_drv">
+			<resource name="RAM" quantum="1M"/>
+			<provides>
+				<service name="Terminal"/>
+				<service name="Uart"/>
+			</provides>
+			<config>
+				<policy label="noux" uart="1"/>
+			</config>
+		</start>
+		<start name="ram_fs">
+			<resource name="RAM" quantum="10M"/>
+			<provides><service name="File_system"/></provides>
+			<config>
+				<!-- constrain sessions according to their labels -->
+				
+				<policy label="" root="/" writeable="yes"/>
+			</config>
+		</start>
+		<start name="tocttou_mkfiles">
+			<resource name="RAM" quantum="2M"/>
+		</start>
+		<start name="tocttou_target">
+			<resource name="RAM" quantum="2M"/>
+		</start>
+		<start name="noux">
+			<resource name="RAM" quantum="6M" />
+			<config>
+				<fstab>
+					<tar name="attacker.tar" />
+					<fs label="root" />
+				</fstab>
+				<start name="/attacker" />
+			</config>
+		</start>
+	</config>
+}
+
+install_config $config
+
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core init timer uart_drv ram_fs noux
+	ld.lib.so libc.lib.so libc_noux.lib.so
+	tocttou_target tocttou_mkfiles attacker.tar libc_log.lib.so libc_fs.lib.so
+}
+
+build_boot_image $boot_modules
+
+#
+# Redirect the output of Noux via the virtual serial port 1 into a file to be
+# dumped after the successful completion of the test.
+#
+set noux_output_file "noux_output.log"
+
+append qemu_args " -nographic"
+append qemu_args " -serial mon:stdio"
+#append qemu_args " -serial file:$noux_output_file"
+
+run_genode_until "child.*exited.*\n" 20
+
+set output [exec cat $noux_output_file] 
+puts $output
+
+exec rm bin/target.tar
+exec rm bin/mkfiles.tar
+exec rm $noux_output_file
+
+grep_output "test finished"
+compare_output_to "test finished"

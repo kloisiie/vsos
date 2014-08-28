@@ -1,0 +1,155 @@
+<ui version="4.0" >
+ <class>Qt_launchpadClass</class>
+ <widget class="QMainWindow" name="Qt_launchpadClass" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>130</width>
+    <height>740</height>
+   </rect>
+  </property>
+  <property name="minimumSize" >
+   <size>
+    <width>135</width>
+    <height>740</height>
+   </size>
+  </property>
+  <property name="maximumSize" >
+   <size>
+    <width>135</width>
+    <height>740</height>
+   </size>
+  </property>
+  <property name="windowTitle" >
+   <string>五级操作系统任务管理器</string>
+  </property>
+  <widget class="QWidget" name="centralwidget" />
+
+  <widget class="QDockWidget" name="launcherDockWidget" >
+   <property name="minimumSize" >
+    <size>
+     <width>115</width>
+     <height>740</height>
+    </size>
+   </property>
+   <property name="maximumSize" >
+    <size>
+     <width>115</width>
+     <height>740</height>
+    </size>
+   </property>
+   <property name="features" >
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::NoDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas" >
+    <set>Qt::LeftDockWidgetArea</set>
+   </property>
+   <property name="windowTitle" >
+    <string>任务栏</string>
+   </property>
+   <attribute name="dockWidgetArea" >
+    <number>1</number>
+   </attribute>
+   <widget class="QToolBox" name="launcherDockWidgetContents" />
+  </widget>
+  <widget class="QDockWidget" name="childrenDockWidget" >
+   <property name="maximumSize" >
+    <size>
+     <width>115</width>
+     <height>20</height>
+    </size>
+   </property>
+   <property name="features" >
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::NoDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas" >
+    <set>Qt::LeftDockWidgetArea</set>
+   </property>
+   <property name="windowTitle" >
+    <string>进程管理</string>
+   </property>
+   <attribute name="dockWidgetArea" >
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="childrenDockWidgetContents" />
+  </widget>
+  <widget class="QDockWidget" name="statusDockWidget" >
+   <property name="minimumSize" >
+    <size>
+     <width>95</width>
+     <height>30</height>
+    </size>
+   </property>
+   <property name="maximumSize" >
+    <size>
+     <width>95</width>
+     <height>30</height>
+    </size>
+   </property>
+   <property name="features" >
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::NoDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas" >
+    <set>Qt::LeftDockWidgetArea</set>
+   </property>
+   <property name="windowTitle" >
+    <string>空闲内存</string>
+   </property>
+   <attribute name="dockWidgetArea" >
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="statusDockWidgetContents" >
+    <property name="minimumSize" >
+     <size>
+      <width>95</width>
+      <height>30</height>
+     </size>
+    </property>
+    <property name="maximumSize" >
+     <size>
+      <width>95</width>
+      <height>35</height>
+     </size>
+    </property>
+    <layout class="QHBoxLayout" >
+     <item>
+      <widget class="Kbyte_loadbar" name="totalQuotaProgressBar" >
+       <property name="minimumSize" >
+        <size>
+         <width>90</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="value" >
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" >
+        <size>
+         <width>40</width>
+         <height>10</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Kbyte_loadbar</class>
+   <extends>QProgressBar</extends>
+   <header>kbyte_loadbar.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

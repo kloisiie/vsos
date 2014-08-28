@@ -1,0 +1,26 @@
+
+#
+# Drivers ported from the Linux kernel (USB)
+#
+# Not supported on the ARM architecture.
+#
+#REPOSITORIES += $(GENODE_DIR)/dde_linux
+
+#
+# Additional drivers ported from the Linux kernel (audio, Intel GEM)
+#
+# Not supported on the ARM architecture.
+#
+# This repository is deprecated.
+#
+#REPOSITORIES += $(GENODE_DIR)/linux_drivers
+
+#
+# Drivers ported from the Open Sound System
+#
+#REPOSITORIES += $(GENODE_DIR)/dde_oss
+
+#
+# Drivers ported from iPXE
+#
+#REPOSITORIES += $(GENODE_DIR)/dde_ipxe

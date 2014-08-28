@@ -1,0 +1,168 @@
+assert_spec foc
+
+#
+# Build
+#
+set build_components {
+	core
+	init
+	drivers/atapi
+	drivers/timer
+	drivers/uart
+	server/ffat_fs
+	test/libc_fs
+        drivers/ahci
+	drivers/framebuffer
+	l4linux }
+
+lappend_if [have_spec     x86] build_components drivers/nic
+lappend_if [have_spec     pci] build_components drivers/pci
+lappend_if [have_spec    acpi] build_components drivers/acpi
+lappend_if [have_spec     ps2] build_components drivers/input/ps2
+lappend_if [have_spec lan9118] build_components drivers/nic
+
+build $build_components
+create_boot_directory
+
+#	<start name="ffat_fs">
+#		<resource name="RAM" quantum="4M"/>
+#		<provides> <service name="File_system"/> </provides>
+#		<config> <policy label="" root="/" writeable="yes" /> </config>
+#	</start>
+#	<start name="test-libc_fs">
+#		<resource name="RAM" quantum="2M"/>
+#	</start>
+#	<start name="atapi_drv">
+#		<resource name="RAM" quantum="2M"/>
+#		<provides> <service name="Block"/> </provides>
+#		<config ata="yes" />
+#	</start>
+#
+
+# Config
+#
+set config  {
+<config verbose="yes">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	<start name="ahci">
+		<binary name="ahci_drv" />
+		<resource name="RAM" quantum="10M" />
+		<provides><service name="Block" /></provides>
+		<route>
+			<service name="IRQ"><child name="acpi" /></service>
+			<any-service> <parent /> <any-child /></any-service>
+		</route>
+	</start>
+	<start name="ffat_fs">
+		<resource name="RAM" quantum="4M"/>
+		<provides> <service name="File_system"/> </provides>
+		<config> <policy label="" root="/" writeable="yes" /> </config>
+	</start>
+	<start name="test-libc_fs">
+		<resource name="RAM" quantum="2M"/>
+	</start>
+ }
+
+append_if [have_spec acpi] config {
+	<start name="acpi">
+		<resource name="RAM" quantum="6M"/>
+		<binary name="acpi_drv"/>
+		<provides>
+			<service name="PCI"/>
+			<service name="IRQ" />
+		</provides>
+		<route>
+			<service name="PCI"> <any-child /> </service>
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start>}
+
+append config {
+</config>}
+
+install_config $config
+
+#
+# Boot modules
+#
+set boot_modules { core init timer kdb_uart_drv
+ld.lib.so libc.lib.so libc_log.lib.so libc_fs.lib.so
+	test-libc_fs ffat_fs  ahci_drv }
+lappend_if [have_spec     pci] boot_modules pci_drv
+lappend_if [have_spec    acpi] boot_modules acpi_drv
+lappend_if [have_spec     ps2] boot_modules ps2_drv
+lappend_if [have_spec   pl11x] boot_modules pl11x_drv
+lappend_if [have_spec    vesa] boot_modules vesa_drv
+lappend_if [have_spec     x86] boot_modules nic_drv
+lappend_if [have_spec lan9118] boot_modules nic_drv
+
+if {[have_spec x86]} {
+	set uri "http://genode.org/files/release-11.11/l4lx/initrd-ia32.gz"
+} elseif {[have_spec arm]} {
+	set uri "http://genode.org/files/release-11.11/l4lx/initrd-arm.gz"
+}
+if {![file exists bin/initrd.gz]} {
+	puts "Download initramfs ..."
+	exec >& /dev/null wget -c -O bin/initrd.gz $uri
+}
+
+build_boot_image  [join $boot_modules " "]
+
+set disk_image "bin/test.hda"
+set cmd "dd if=/dev/zero of=$disk_image bs=1024 count=65536"
+puts "creating disk image: $cmd"
+catch { exec sh -c $cmd }
+
+set cmd "mkfs.vfat -F32 $disk_image"
+puts "formating disk image with vfat file system: $cmd"
+catch { exec sh -c $cmd }
+
+#
+# Qemu
+#
+append qemu_args " -m 128 -nographic "
+append qemu_args " -serial mon:stdio "
+append qemu_args " -hda $disk_image -boot order=d "
+append_if [have_spec     x86] qemu_args " -smp 2,cores=2 "
+append_if [have_spec     x86] qemu_args " -net nic,model=e1000 -net user "
+append_if [have_spec lan9118] qemu_args " -net nic,model=lan9118 -net user "
+
+#
+# Execute test case
+#
+run_genode_until {.*child exited with exit value 0.*} 60
+
+exec rm -f $disk_image
+
+puts "\ntest succeeded\n"
+
+# Wait for network to settle down
+#send "sleep 5\n"
+#send "wget http://genode.org/\n"
+
+#expect {
+#	 -re "Connecting to genode.org.*index.html.*\/ #.*" { }
+#	timeout { puts stderr "Error: Test execution timed out"; exit -2 }
+#}
+
+#puts "Test succeeded"
+#exec rm bin/initrd.gz

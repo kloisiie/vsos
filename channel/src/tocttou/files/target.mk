@@ -1,0 +1,3 @@
+TARGET = tocttou_mkfiles
+LIBS   = libc libc_log libc_fs
+SRC_CC = main.cc

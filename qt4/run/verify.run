@@ -1,0 +1,675 @@
+#
+# Build
+#
+
+build {
+	core
+	init
+	drivers/input/ps2
+	drivers/pci
+	drivers/framebuffer
+	drivers/timer
+	drivers/input
+	drivers/uart
+	app/tipsak
+	app/version
+	app/verify
+	server/nitpicker
+	server/loader
+	server/tar_rom
+	test/nitpicker
+	server/liquid_framebuffer 
+	server/nitlog
+	app/qt_launchpad 
+	app/highlevel
+	app/midlevel
+	app/lowlevel
+	app/highlevel_process
+	app/midlevel_process
+	app/lowlevel_process
+	app/scout
+	app/launchpad
+	test/log
+	app/server_bak
+	app/funtest
+	app/monitortest
+	app/dactest
+	ipc_dos
+	service
+	overflow
+	leak calc app/test_start
+	tocttou server/ram_fs noux/minimal lib/libc_noux
+	l4linux
+	app/reuse
+	drivers/rtc
+}
+create_boot_directory
+exec tar cfv bin/attacker.tar       -h -C bin attacker 
+#
+# Generate config
+#
+
+set config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+		<service name="Monitor"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="rtc_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Rtc"/></provides>
+	</start>
+}
+
+append_if [have_spec sdl] config {
+	<start name="fb_sdl">
+		<resource name="RAM" quantum="4M"/>
+		<provides>
+			<service name="Input"/>
+			<service name="Framebuffer"/>
+		</provides>
+	</start>}
+
+append_if [have_spec pci] config {
+	<start name="pci_drv">
+		<resource name="RAM" quantum="5M"/>
+		<provides><service name="PCI"/></provides>
+	</start>}
+
+append_if [have_spec vesa] config {
+	<start name="vesa_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+
+append_if [have_spec pl11x] config {
+	<start name="pl11x_drv">
+		<resource name="RAM" quantum="2M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+append_if [have_spec omap4] config {
+	<start name="omap4_fb_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+
+append_if [have_spec usb] config {
+	<start name="usb_drv">
+		<resource name="RAM" quantum="12M"/>
+		<provides><service name="Input"/></provides>
+	</start> }
+append_if [expr ! [have_spec usb]  && [have_spec ps2]] config {
+	<start name="ps2_drv">
+		<resource name="RAM" quantum="10M"/>
+		<provides><service name="Input"/></provides>
+	</start> }
+append_if [expr ![have_spec ps2] && [have_spec usb]] config {
+	<start name="usb_drv">
+		<resource name="RAM" quantum="20M"/>
+		<provides><service name="Input"/></provides>
+		<config> <hid/> </config>
+	</start> }
+append config {
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	
+	<start name="nitpicker">
+		<resource name="RAM" quantum="20M"/>
+		<provides><service name="Nitpicker"/></provides>
+	</start>
+	<start name="loader">
+		<resource name="RAM" quantum="8M"/>
+		<provides><service name="Loader"/></provides>
+	</start>
+	<start name="tipsak">
+		<resource name="RAM" quantum="30M"/>
+	</start>
+	<start name="version">
+		<resource name="RAM" quantum="30M"/>
+	</start>
+	<start name="qt_launchpad">
+		<resource name="RAM" quantum="700M"/>
+		<provides><service name="LOGINserver"/></provides>
+		<route>
+			<service name="Monitor"> <parent/> <parent/> </service>			
+			<any-service> <parent/> <any-child/> </any-service>	
+		</route>
+		<config>
+			<launcher>
+				<filename>lowlevel_process</filename>
+				<appname>低密级服务进程</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>midlevel_process</filename>
+				<appname>中密级服务进程</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>highlevel_process</filename>
+				<appname>高密级服务进程</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>lowlevel_app</filename>
+				<appname>低密级应用</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>midlevel_app</filename>
+				<appname>中密级应用</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>highlevel_app</filename>
+				<appname>高密级应用</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>0</groupnum>
+			</launcher>
+			<launcher>
+				<filename>log</filename>
+				<appname>审计日志</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>2</groupnum>
+			</launcher>
+			<launcher>
+				<filename>funtest</filename>
+				<appname>基本服务接口测试</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>dos_server</filename>
+				<appname>DOS服务器</appname>
+				<ram_quota>1M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>dos_client</filename>
+				<appname>DOS客户端</appname>
+				<ram_quota>1M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>dos_attacker</filename>
+				<appname>DOS攻击程序</appname>
+				<ram_quota>30M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>leak_access</filename>	
+				<appname>ROM访问测试</appname>
+				<ram_quota>3M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>init</filename>
+				<appname>权能伪造</appname>
+				<ram_quota>10M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+					 	<service name="LOG"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="Timer"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<start name="channel_server">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+						<route>
+							<service name="CAP"> <parent/> </service>
+							<service name="SIGNAL"> <parent/> </service>
+							<service name="Timer">  <parent/> </service> 
+					       	        <service name="LOG">    <parent/>             </service> 
+							<service name="ROM">    <parent/>             </service> 
+							<service name="RAM">    <parent/>             </service> 
+							<service name="CPU">    <parent/>             </service> 
+							<service name="RM">     <parent/>             </service> 
+							<service name="PD">     <parent/>             </service> 
+							<service name="Monitor">     <parent/>             </service> 								<service name="Rtc">     <parent/>             </service>  						
+						</route>
+					</start>
+					<start name="leak-server">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Leak"/></provides>
+						<route>
+							<service name="CAP"> <parent/> </service>
+							<service name="SIGNAL"> <parent/> </service>
+							<service name="Timer">  <parent/> </service> 
+					       	        <service name="LOG">    <parent/>             </service> 
+							<service name="ROM">    <parent/>             </service> 
+							<service name="RAM">    <parent/>             </service> 
+							<service name="CPU">    <parent/>             </service> 
+							<service name="RM">     <parent/>             </service> 
+							<service name="PD">     <parent/>             </service> 
+							<service name="Calc">  <child name="channel_server"/> </service> 
+							<service name="Monitor">     <parent/>             </service> 								<service name="Rtc">     <parent/>             </service>  						
+						</route>
+					</start>
+					<start name="leak-test">
+						<resource name="RAM" quantum="1M"/>
+						<route>
+							<service name="CAP"> <parent/> </service>
+							<service name="SIGNAL"> <parent/> </service>
+							<service name="Timer">  <parent/> </service> 
+					       	        <service name="LOG">    <parent/>             </service> 
+							<service name="ROM">    <parent/>             </service> 
+							<service name="RAM">    <parent/>             </service> 
+							<service name="CPU">    <parent/>             </service> 
+							<service name="RM">     <parent/>             </service> 
+							<service name="PD">     <parent/>             </service> 
+							<service name="Leak">     <child name="leak-server"/>             </service> 								<service name="Rtc">     <parent/>             </service>  
+						</route>
+					</start>
+				</config>
+			</launcher>	
+			<launcher>
+				<filename>init</filename>
+				<appname>同名应用测试</appname>
+				<ram_quota>10M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="IO_PORT"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="LOG"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<default-route>
+						<any-service> <parent/> <any-child/> </any-service>
+					</default-route>
+					<start name="calc_serverA">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_serverA">
+						<binary file="calc_serverB"/>
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+				</config>
+			</launcher>
+			<launcher>
+				<filename>init</filename>
+				<appname>同名服务测试</appname>
+				<ram_quota>10M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="IO_PORT"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="LOG"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="Timer"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<default-route>
+						<any-service> <parent/> <any-child/> </any-service>
+					</default-route>
+					<start name="calc_serverA">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_serverB">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+				</config>
+			</launcher>			
+			<launcher>
+				<filename>init</filename>
+				<appname>同名服务访问1</appname>
+				<ram_quota>10M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="IO_PORT"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="LOG"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="Timer"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<default-route>
+						<any-service> <parent/> <any-child/> </any-service>
+					</default-route>
+					<start name="calc_serverA">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_serverB">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_client">
+						<resource name="RAM" quantum="1M"/>
+					</start>
+				</config>
+			</launcher>
+			<launcher>
+				<filename>init</filename>
+				<appname>同名服务访问2</appname>
+				<ram_quota>10M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="IO_PORT"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="LOG"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="Timer"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<default-route>
+						<any-service> <parent/> <any-child/> </any-service>
+					</default-route>
+					<start name="calc_serverA">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_serverB">
+						<resource name="RAM" quantum="1M"/>
+						<provides><service name="Calc"/></provides>
+					</start>
+					<start name="calc_client">
+						<resource name="RAM" quantum="1M"/>
+						<route>
+							<service name="Calc"> 	<child name="calc_serverA"/>    </service>
+							<any-service> <parent/> <any-child/> </any-service>
+						</route>
+					</start>
+				</config>
+			</launcher>
+			<launcher>
+				<filename>overflow</filename>
+				<appname>溢出程序</appname>
+				<ram_quota>2M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>			
+			<launcher>
+				<filename>tocttou_mkfiles</filename>
+				<appname>创建文件</appname>
+				<ram_quota>2M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>		
+			<launcher>
+				<filename>init</filename>
+				<appname>touttou测试</appname>
+				<ram_quota>20M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="LOG"/>
+						<service name="CAP"/>
+						<service name="RAM"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="PD"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="SIGNAL"/>
+						<service name="Monitor"/>
+						<service name="File_system"/>
+						<service name="Uart"/>
+						<service name="Timer"/>
+						<service name="Terminal"/>
+						<service name="Rtc"/>
+					</parent-provides>
+					<default-route>
+						<any-service> <any-child/> <parent/> </any-service>
+					</default-route>
+					<start name="tocttou_target">
+						<resource name="RAM" quantum="2M"/>
+					</start>
+					<start name="noux">
+						<resource name="RAM" quantum="10M" />
+						<config>
+							<fstab>
+								<tar name="attacker.tar" />
+								<fs label="root" />
+							</fstab>
+							<start name="/attacker" />
+						</config>
+					</start>
+					
+					
+				</config>
+			</launcher>
+			<launcher>
+				<filename>reuse</filename>
+				<appname>客体重用测试</appname>
+				<ram_quota>600M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>channel_server</filename>
+				<appname>隐蔽信道服务进程</appname>
+				<ram_quota>4M</ram_quota>
+				<groupnum>1</groupnum>
+				<config>
+					<provides><service name="Calc"/></provides>
+				</config>
+			</launcher>
+			<launcher>
+				<filename>channel_client</filename>
+				<appname>隐蔽信道客户端</appname>
+				<ram_quota>2M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+				<filename>channel_interfere</filename>
+				<appname>隐蔽信道干扰程序</appname>
+				<ram_quota>4M</ram_quota>
+				<groupnum>1</groupnum>
+			</launcher>
+			<launcher>
+	                       <filename>l4linux</filename>
+				<appname>命令行</appname>
+		               <ram_quota>128M</ram_quota>
+				<groupnum>2</groupnum>
+                	       <config args="mem=64M console=ttyS0 l4x_rd=initrd.gz l4x_cpus=2 l4x_cpus_map=0,1"/>
+			</launcher>
+			<launcher>
+				<filename>monitortest</filename>
+				<appname>安全标记管理</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>2</groupnum>
+			</launcher>
+			<launcher>
+				<filename>dactest</filename>
+				<appname>自主访问管理</appname>
+				<ram_quota>16M</ram_quota>
+				<groupnum>2</groupnum>
+			</launcher>
+		</config>
+	</start>
+	<start name="uart_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Terminal"/></provides>
+		<config>
+			<policy label="qt_launchpad -> init -> noux" uart="1"/>	
+		</config>
+	</start> 
+	<start name="backup_server">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="backup"/></provides>
+	</start>
+	<start name="test-verify">
+		<resource name="RAM" quantum="30M"/>
+		<provides>
+			<service name="SAKserver"/>
+			<service name="TrustONEserver"/>
+		</provides>
+	</start>
+	<start name="ram_fs">
+			<resource name="RAM" quantum="40M"/>
+			<provides><service name="File_system"/></provides>
+			<config>
+				<!-- constrain sessions according to their labels -->
+				
+				<policy label="" root="/" writeable="yes"/>
+			</config>
+	</start>
+	
+</config>
+}
+
+install_config $config
+
+
+#
+# Boot modules
+#
+
+exec sh -c "ln -sf ../app/verify/test-verify.tar bin/"
+exec sh -c "ln -sf ../init/cap.config bin/"
+# generic modules
+set boot_modules {
+	core
+	init
+	timer
+	nitpicker
+	loader
+	tar_rom
+	testnit
+	tipsak
+	version
+	test-verify
+	dejavusans.lib.so
+	freetype.lib.so
+	ld.lib.so
+	libc.lib.so
+	libc_lock_pipe.lib.so
+	libm.lib.so
+	libpng.lib.so
+	jpeg.lib.so
+	qt_core.lib.so
+	qt_gui.lib.so
+	qnitpickerviewwidget.lib.so
+	qpluginwidget.lib.so
+	qt_network.lib.so
+	zlib.lib.so
+	qt_network.lib.so
+	liquid_fb 
+	qt_launchpad 
+	scout
+	testnit 
+	nitlog
+	stdcxx.lib.so
+	highlevel_app
+	lowlevel_app
+	midlevel_app
+	highlevel_process
+	lowlevel_process
+	midlevel_process
+	backup_server
+	log
+	monitortest
+	dactest
+	dos_client dos_server dos_attacker
+	calc_client calc_serverA calc_serverB
+	overflow
+	leak-test leak-server channel_server leak_access
+	launchpad test_start
+	uart_drv
+	ram_fs noux tocttou_target tocttou_mkfiles attacker.tar 
+	libc_log.lib.so libc_noux.lib.so libc_fs.lib.so
+	lwip.lib.so  
+	l4linux
+	initrd.gz
+	liquid_fb
+	funtest
+	reuse
+	channel_client channel_server channel_interfere
+	rtc_drv
+}
+
+# platform-specific modules
+lappend_if [have_spec linux] boot_modules fb_sdl
+lappend_if [have_spec pci]   boot_modules pci_drv
+lappend_if [have_spec vesa]  boot_modules vesa_drv
+lappend_if [have_spec ps2]   boot_modules ps2_drv
+lappend_if [have_spec pl11x] boot_modules pl11x_drv
+lappend_if [have_spec omap4] boot_modules omap4_fb_drv
+lappend_if [have_spec usb]   boot_modules usb_drv
+
+if {[have_spec x86]} {
+	set uri "http://genode.org/files/release-11.11/l4lx/initrd-ia32.gz"
+} elseif {[have_spec arm]} {
+	set uri "http://genode.org/files/release-11.11/l4lx/initrd-arm.gz"
+}
+if {![file exists bin/initrd.gz]} {
+	puts "Download initramfs ..."
+	exec >& /dev/null wget -c -O bin/initrd.gz $uri
+}
+
+build_boot_image $boot_modules
+set noux_output_file "noux_output.log"
+append qemu_args " -m 1024"
+append qemu_args " -serial mon:stdio "
+append qemu_args " -smp 2,cores=2 "
+append qemu_args " -net nic,model=e1000 -net user "
+run_genode_until forever

@@ -1,0 +1,252 @@
+/*
+ * \brief   verify test
+ * \author  OS5
+ * \date    2013-09-04
+ */
+
+/* Qt includes */
+#include <QtGui>
+#include <QApplication>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QLabel>
+#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QSpacerItem>
+#include <QDialog>
+#include <QObject>
+#include <QFont>
+#include <QComboBox>
+#include <QStringList>
+/* Qoost includes */
+#include "verify.h"
+
+
+#include <base/env.h>
+#include <loginserver_session/client.h>
+#include <loginserver_session/connection.h>
+#include <timer_session/connection.h>
+#include <monitor_session/connection.h>
+extern bool sakpressed;
+LoginDialog::LoginDialog(QWidget *parent)
+:QDialog(parent)
+{	
+	label_user = new QLabel(tr("用户名(&U)：")); 
+	label_pass = new QLabel(tr("   密码(&P)："));
+	label_pass2 = new QLabel(tr("新密码(&N)："));
+	label_blp = new QLabel(tr("BLP等级(&B)："));
+	label_space = new QLabel(tr("    "));
+	label_user->setFont(QFont("OS5",12,QFont::Bold));
+	label_pass->setFont(QFont("OS5",12,QFont::Bold));
+	label_pass2->setFont(QFont("OS5",12,QFont::Bold));
+	label_blp->setFont(QFont("OS5",12,QFont::Bold));
+	lineEdit_user = new QLineEdit;
+	lineEdit_pass = new QLineEdit;
+	lineEdit_pass2 = new QLineEdit;
+	comboBox_blp = new QComboBox(this);
+	lineEdit_pass->setEchoMode(QLineEdit::Password);
+	lineEdit_pass2->setEchoMode(QLineEdit::Password);
+	lineEdit_user->setFont(QFont("OS5",12,QFont::Bold));
+	comboBox_blp->setFont(QFont("OS5",12,QFont::Bold));
+	label_user->setBuddy(lineEdit_user);
+	label_pass->setBuddy(lineEdit_pass);
+	label_pass2->setBuddy(lineEdit_pass2);
+	label_blp->setBuddy(comboBox_blp);	
+	comboBox_blp->addItems(QStringList()<<"1"<<"2"<<"3");
+    	loginButton = new QPushButton(tr("登入"));
+	changeButton = new QPushButton(tr("修改密码"));
+    	loginButton->setEnabled(false);
+	changeButton->setEnabled(false);
+	loginButton->setFont(QFont("OS5",12,QFont::Bold));
+	num=5;
+	cancelButton = new QPushButton(tr("取消"));
+	cancelButton->setFont(QFont("OS5",12,QFont::Bold));
+	cancelButton->setFocus();
+	loginButton->installEventFilter(this);
+	changeButton->installEventFilter(this);
+	QObject::connect(lineEdit_pass,SIGNAL(textChanged(const QString &)),this,SLOT(enableLoginButton(const QString &)));
+	QObject::connect(lineEdit_pass2,SIGNAL(textChanged(const QString &)),this,SLOT(enableChangeButton(const QString &)));
+    	QObject::connect(loginButton,SIGNAL(clicked()),this,SLOT(loginClicked()));
+    	QObject::connect(cancelButton,SIGNAL(clicked()),this,SLOT(cancelClicked()));
+	QObject::connect(changeButton,SIGNAL(clicked()),this,SLOT(changeClicked()));
+    	QHBoxLayout *topLayoutUp = new QHBoxLayout;
+    	topLayoutUp->addWidget(label_user);
+    	topLayoutUp->addWidget(lineEdit_user);
+    	topLayoutUp->addWidget(label_blp);
+    	topLayoutUp->addWidget(comboBox_blp);
+	
+    	QHBoxLayout *topLayoutDown = new QHBoxLayout;
+    	topLayoutDown->addWidget(label_pass);
+    	topLayoutDown->addWidget(lineEdit_pass);
+	QHBoxLayout *topLayoutDown2 = new QHBoxLayout;
+    	topLayoutDown2->addWidget(label_pass2);
+    	topLayoutDown2->addWidget(lineEdit_pass2);
+    	QHBoxLayout *bottomLayout = new QHBoxLayout;
+	bottomLayout->addWidget(label_space);
+	bottomLayout->addWidget(loginButton);
+	bottomLayout->addWidget(cancelButton);
+	bottomLayout->addWidget(changeButton);
+    	bottomLayout->addStretch();
+	QVBoxLayout *mainLayout = new QVBoxLayout;
+    	mainLayout->addLayout(topLayoutUp);
+    	mainLayout->addLayout(topLayoutDown);
+	mainLayout->addLayout(topLayoutDown2);
+    	mainLayout->addLayout(bottomLayout);
+    	setLayout(mainLayout);
+    	setWindowTitle(tr("五级系统登入"));
+    	setFixedHeight(sizeHint().height());	
+}
+
+void LoginDialog::loginClicked() {
+	if(!isActive) return;
+	Genode::Monitor_Connection h;
+	Genode::Monitor_Session::Strategy_out_string blprange;
+	Genode::Monitor_Session::Strategy_out_string bibarange;
+	int get_blp,get_biba;
+	int i=0;
+	Timer::Connection t;
+	t.msleep(1000);	
+	for(;i<num;i++)
+       		if(lineEdit_user->text().trimmed() == tr(users[i].name)&& lineEdit_pass->text().trimmed() == tr(users[i].password)){
+			h.GetUserStrategyByname(lineEdit_user->text().toLatin1().data(),get_blp,get_biba,blprange,bibarange);
+			break;
+		}
+	if(i<num){
+		if((comboBox_blp->currentText()).toInt()>=get_blp/10&&(comboBox_blp->currentText()).toInt()<=get_blp%10){
+                	QMessageBox::information(this, tr("登入"), tr("欢迎来到五级操作系统！"), QMessageBox::Ok);
+			this->hide();
+			h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"user login",1,(comboBox_blp->currentText()).toLatin1().data());
+			sakpressed=false;
+			LOGINserver::Connection l;
+			l.login_finished();
+			char *name=lineEdit_user->text().toLatin1().data();
+			Timer::Connection loginwait;
+			while(!sakpressed){
+			
+				loginwait.msleep(1000);
+				if(sakpressed){
+					h.AddAuditInfo(name,"sak pressed",1,(comboBox_blp->currentText()).toLatin1().data());
+					loginwait.msleep(7000);
+					lineEdit_user->clear();
+					lineEdit_pass->clear();
+					lineEdit_pass2->clear();
+					this->show();				
+				}
+			}
+		}
+		else{
+			QMessageBox::warning(this, tr("警告！"), tr("BLP等级错误！"), QMessageBox::Yes);
+			h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"user login",0,(comboBox_blp->currentText()).toLatin1().data());
+			comboBox_blp->setFocus();
+		}
+		//delete(this);
+		
+            }           
+        else{
+                QMessageBox::warning(this, tr("警告！"), tr("用户名或密码错误！"), QMessageBox::Yes);
+		h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"user login",0,(comboBox_blp->currentText()).toLatin1().data());
+		lineEdit_user->clear();
+		lineEdit_pass->clear();
+		lineEdit_pass2->clear();
+                lineEdit_pass->setFocus();
+            }
+}
+
+void LoginDialog::changeClicked() {
+	if(!isActive) return;
+	Genode::Monitor_Connection h;
+	int j=0;	
+	for(;j<num;j++)
+       		if(lineEdit_user->text().trimmed() == tr(users[j].name)&& lineEdit_pass->text().trimmed() == tr(users[j].password))
+			break;
+	if(j<num){
+		char newpass[20];
+		strcpy(newpass,lineEdit_pass2->text().toLatin1().data());
+		PWRN("newpass %s",newpass);
+		int length=strlen(newpass);
+		if(length<8){
+			QMessageBox::warning(this, tr("警告！"), tr("密码过短！"), QMessageBox::Yes);
+			h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"change user password",0,(comboBox_blp->currentText()).toLatin1().data());
+			lineEdit_pass2->clear();
+			changeButton->setEnabled(false);
+			lineEdit_pass2->setFocus();
+			return;			
+		}
+		int score=0;
+		for(int i=0;i<length;i++){
+			if(newpass[i]>'0'&&newpass[i]<'9'){
+					score|=1;	
+			}
+			else if	((newpass[i]>'a'&&newpass[i]<'z')||(newpass[i]>'A'&&newpass[i]<'Z')){
+					score|=2;
+			}
+			else{
+				score|=4;			
+			}	
+		}
+		if(score==7){
+			QMessageBox::information(this, tr("提醒"), tr("修改密码成功！"), QMessageBox::Ok);
+	  		strcpy(users[j].password,newpass);
+			PWRN("newpass %s,user %s : password %s",newpass,users[j].name,users[j].password);
+			h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"change user password",1,(comboBox_blp->currentText()).toInt());
+			lineEdit_user->clear();
+			lineEdit_pass->clear();
+			lineEdit_pass2->clear();		
+		}
+		else{
+			QMessageBox::warning(this, tr("警告！"), tr("密码过简单！"), QMessageBox::Yes);
+			h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"change user password",0,(comboBox_blp->currentText()).toLatin1().data());
+			lineEdit_pass->setFocus();
+			lineEdit_pass2->clear();
+			changeButton->setEnabled(false);
+		}
+            }           
+        else{
+                QMessageBox::warning(this, tr("警告！"), tr("用户名或密码错误！"), QMessageBox::Yes);
+		h.AddAuditInfo(lineEdit_user->text().toLatin1().data(),"change user password",0,(comboBox_blp->currentText()).toLatin1().data());
+                lineEdit_pass->setFocus();
+		lineEdit_user->clear();
+		lineEdit_pass->clear();
+		lineEdit_pass2->clear();	
+            }
+}
+bool LoginDialog:: eventFilter(QObject *watched,QEvent *e){
+	if((watched==changeButton||watched==loginButton)){
+		int type=0;
+		if(e->type()==QEvent::KeyPress){
+			type=1;
+		}
+		else if(e->type()==QEvent::KeyRelease){	
+			type=2;
+		}
+		if(type>0){
+			QKeyEvent *k=static_cast<QKeyEvent*>(e); 
+			if(k->key()==Qt::Key_Enter||k->key()==Qt::Key_Return){
+				if(type==2){
+					isActive=true;
+					if(watched==changeButton)
+						changeClicked();
+					else
+						loginClicked();									
+					return true;
+				}
+				isActive=false;
+				return false;			
+			}
+				
+		}
+	}
+	return QWidget::eventFilter(watched,e);
+}
+void LoginDialog::cancelClicked() {
+    PWRN("pressed");
+    lineEdit_user->clear();
+    lineEdit_pass->clear();
+    lineEdit_pass2->clear();
+}
+void LoginDialog::enableLoginButton(const QString &pass) {
+    loginButton->setEnabled(!pass.isEmpty());
+  }
+void LoginDialog::enableChangeButton(const QString &pass) {
+    	changeButton->setEnabled(!pass.isEmpty());
+  }

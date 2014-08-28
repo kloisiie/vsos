@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/qt/fonts">
+<file alias="OS5.TTF">../../../contrib/qt-everywhere-opensource-src-4.7.4/lib/fonts/OS5.TTF</file>
+</qresource>
+</RCC>
+
